@@ -44,7 +44,7 @@ def notify_class_starting_teacher(sender, **kwargs):
 def notify_subscription_is_not_used(sender, **kwargs):
     s = kwargs['instance']
     owl = Owl(
-        template='mail/class/teacher/subscription_is_not_used.html',
+        template='mail/class/student/subscription_is_not_used.html',
         ctx={
             'c': s,
         },
