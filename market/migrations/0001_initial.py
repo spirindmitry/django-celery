@@ -30,6 +30,7 @@ class Migration(migrations.Migration):
                 ('product_id', models.PositiveIntegerField(default=1)),
                 ('product_type', models.ForeignKey(to='contenttypes.ContentType')),
                 ('is_fully_used', models.BooleanField(default=False)),
+                ('not_used_notifications_sent_to_customer', models.BooleanField(default=False)),
             ],
             options={
                 'abstract': False,

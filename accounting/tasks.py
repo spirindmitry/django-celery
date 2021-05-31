@@ -8,6 +8,10 @@ from timeline.models import Entry as TimelineEntry
 def bill_timeline_entries():
     for entry in TimelineEntry.objects.to_be_marked_as_finished().filter(taken_slots__gte=1):
         entry.is_finished = True
+        for c in entry.classes.all():
+            if c.subscription:
+                c.subscription.not_used_notifications_sent_to_customer = False
+                c.subscription.save()
         entry.save()
 
         if not AccEvent.objects.by_originator(entry).count():
