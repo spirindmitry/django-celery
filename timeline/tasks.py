@@ -1,8 +1,11 @@
 from datetime import timedelta
 
+from django.db.models import Max
+from django.utils.timezone import now
+
 from elk.celery import app as celery
-from market.models import Class
-from timeline.signals import class_starting_student, class_starting_teacher
+from market.models import Class, Subscription
+from timeline.signals import class_starting_student, class_starting_teacher, subscription_is_not_used
 
 
 @celery.task
@@ -20,3 +23,16 @@ def notify_15min_to_class():
         i.pre_start_notifications_sent_to_student = True
         i.save()
         class_starting_student.send(sender=notify_15min_to_class, instance=i)
+
+
+@celery.task
+def notify_1day_unused_lessons():
+    subscriptions_with_last_lessons = Subscription.objects.annotate(last_lesson_time=Max('classes__timeline__end'))
+
+    for s in subscriptions_with_last_lessons.filter(is_fully_used=False,
+                                                    not_used_notifications_sent_to_customer=False,
+                                                    classes__timeline__is_finished=True,
+                                                    last_lesson_time__lte=now() - timedelta(weeks=1)):
+        s.not_used_notifications_sent_to_customer = True
+        s.save()
+        subscription_is_not_used.send(sender=notify_1day_unused_lessons, instance=s)
