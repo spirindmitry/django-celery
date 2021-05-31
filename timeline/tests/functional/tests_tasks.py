@@ -4,6 +4,7 @@ from django.core import mail
 from freezegun import freeze_time
 from mixer.backend.django import mixer
 
+from accounting.tasks import bill_timeline_entries
 from elk.utils.testing import ClassIntegrationTestCase, create_customer
 from market.models import Subscription
 from products.models import Product1
@@ -33,6 +34,18 @@ class TestNotUsedLessonsEmail(ClassIntegrationTestCase):
                 notify_1day_unused_lessons()
 
         self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(self.s.customer.user.email, mail.outbox[0].to[0])
+
+        entry.is_finished = False
+        entry.save()
+        with freeze_time('2032-09-28 15:46'):
+            bill_timeline_entries()
+
+        with freeze_time('2032-09-21 15:46'):   # a week after the last lesson
+            for i in range(0, 10):  # run this 10 times to check for repietive emails — all notifications should be sent one time
+                notify_1day_unused_lessons()
+
+        self.assertEqual(len(mail.outbox), 2)
         self.assertEqual(self.s.customer.user.email, mail.outbox[0].to[0])
 
 
