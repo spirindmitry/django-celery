@@ -5,7 +5,35 @@ from freezegun import freeze_time
 from mixer.backend.django import mixer
 
 from elk.utils.testing import ClassIntegrationTestCase, create_customer
-from timeline.tasks import notify_15min_to_class
+from market.models import Subscription
+from products.models import Product1
+from timeline.tasks import notify_15min_to_class, notify_1day_unused_lessons
+
+
+class TestNotUsedLessonsEmail(ClassIntegrationTestCase):
+
+    @patch('market.signals.Owl')
+    def test_notify_email(self, Owl):
+        self.s = Subscription(
+            customer=create_customer(),
+            product=Product1.objects.get(pk=1),
+            buy_price=150
+        )
+        self.s.save()
+
+        entry = self._create_entry()
+        entry.is_finished = True
+        entry.save()
+
+        c = self.s.classes.first()
+        self._schedule(c, entry)
+
+        with freeze_time('2032-09-21 15:46'):   # a week after the last lesson
+            for i in range(0, 10):  # run this 10 times to check for repietive emails — all notifications should be sent one time
+                notify_1day_unused_lessons()
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(self.s.customer.user.email, mail.outbox[0].to[0])
 
 
 class TestStartingSoonEmail(ClassIntegrationTestCase):
